@@ -1,0 +1,44 @@
+# Source — esbuild already bundled it into dist/extension.js
+src/**
+tsconfig.json
+esbuild.js
+*.map
+
+# Dev-only
+.vscode/**
+.gitignore
+.gitattributes
+.github/**
+*.vsix
+
+# Big assets we don't ship — only the icons used by the manifest matter
+icons/JumperlessWheelMain.png
+icons/icon4096fc.svg
+icons/iconPlay2048.png
+icons/iconStop2048.png
+
+# node_modules: exclude EVERYTHING, then selectively re-include only the
+# runtime dependencies of `serialport` (which we mark external in esbuild
+# because it has a native node-addon binding that can't be bundled).
+node_modules/**
+!node_modules/serialport/**
+!node_modules/@serialport/**
+!node_modules/debug/**
+!node_modules/ms/**
+!node_modules/node-addon-api/**
+!node_modules/node-gyp-build/**
+
+# Inside those, drop developer-only files to keep the package small
+**/test/**
+**/tests/**
+**/__tests__/**
+**/*.test.js
+**/*.spec.js
+**/*.d.ts
+**/*.ts
+**/*.map
+**/CHANGELOG.md
+**/changelog.md
+**/CONTRIBUTING.md
+**/.travis.yml
+**/.eslintrc*

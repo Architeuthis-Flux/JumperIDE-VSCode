@@ -1,0 +1,252 @@
+{
+  "name": "jumperide",
+  "displayName": "JumperIDE",
+  "description": "MicroPython IDE for Jumperless — connect, edit, run, and manage files on your Jumperless board",
+  "version": "0.1.0",
+  "publisher": "jumperless",
+  "license": "MIT",
+  "icon": "icons/ColorBubbleLogoIDE1x.png",
+  "galleryBanner": {
+    "color": "#1a0a14",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Architeuthis-Flux/JumperIDE-VSCode"
+  },
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "micropython",
+    "jumperless",
+    "breadboard",
+    "serial",
+    "embedded"
+  ],
+    "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:python",
+    "onFileSystem:jumperless",
+    "onView:jumperlessActions",
+    "onView:jumperlessDevice",
+    "onView:jumperlessScripts",
+    "onView:jumperlessImages"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "jumperless",
+          "title": "Jumperless",
+          "icon": "icons/jumperless-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "jumperless": [
+        {
+          "id": "jumperlessActions",
+          "name": "Actions",
+          "type": "webview"
+        },
+        {
+          "id": "jumperlessDevice",
+          "name": "Device Files"
+        },
+        {
+          "id": "jumperlessScripts",
+          "name": "JumperNet Registry"
+        },
+        {
+          "id": "jumperlessImages",
+          "name": "OLED Images"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "jumperlessDevice",
+        "contents": "No Jumperless connected.\n[Connect](command:jumperless.connect)"
+      }
+    ],
+    "commands": [
+      { "command": "jumperless.connect", "title": "Jumperless: Connect", "icon": "$(plug)" },
+      { "command": "jumperless.disconnect", "title": "Jumperless: Disconnect", "icon": "$(debug-disconnect)" },
+      { "command": "jumperless.run", "title": "Jumperless: Run Current File", "icon": { "light": "icons/play.svg", "dark": "icons/play.svg" } },
+      { "command": "jumperless.stop", "title": "Jumperless: Stop Execution", "icon": { "light": "icons/stop.svg", "dark": "icons/stop.svg" } },
+      { "command": "jumperless.refreshTree", "title": "Jumperless: Refresh Device Files", "icon": "$(refresh)" },
+      { "command": "jumperless.newDeviceFile", "title": "Jumperless: New File on Device", "icon": "$(new-file)" },
+      { "command": "jumperless.newDeviceDir", "title": "Jumperless: New Folder on Device", "icon": "$(new-folder)" },
+      { "command": "jumperless.deleteDeviceItem", "title": "Jumperless: Delete from Device", "icon": "$(trash)" },
+      { "command": "jumperless.uploadCurrentFile", "title": "Jumperless: Upload Current File to Device" },
+      { "command": "jumperless.openApiRef", "title": "Jumperless: Open API Reference" },
+      { "command": "jumperless.refreshApiRef", "title": "Jumperless: Refresh API Reference" },
+      { "command": "jumperless.initProject", "title": "Jumperless: Initialize Jumperless Project" },
+      { "command": "jumperless.pushScriptToRegistry", "title": "Jumperless: Publish Script to Registry" },
+      { "command": "jumperless.registryOpen", "title": "Open" },
+      { "command": "jumperless.registryOpenImage", "title": "Open in OLED Editor" },
+      { "command": "jumperless.registrySaveToDevice", "title": "Save to Device" },
+      { "command": "jumperless.oledBin.newBitmap", "title": "Jumperless: New OLED Bitmap" },
+      { "command": "jumperless.oledBin.importPng", "title": "Import PNG" },
+      { "command": "jumperless.showActivationLog", "title": "Jumperless: Show Activation Log" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "jumperless.connect", "when": "view == jumperlessDevice && !jumperless.connected", "group": "navigation" },
+        { "command": "jumperless.disconnect", "when": "view == jumperlessDevice && jumperless.connected", "group": "navigation" },
+        { "command": "jumperless.refreshTree", "when": "view == jumperlessDevice && jumperless.connected", "group": "navigation" },
+        { "command": "jumperless.newDeviceFile", "when": "view == jumperlessDevice && jumperless.connected", "group": "navigation" },
+        { "command": "jumperless.newDeviceDir", "when": "view == jumperlessDevice && jumperless.connected", "group": "navigation" }
+      ],
+      "view/item/context": [
+        { "command": "jumperless.deleteDeviceItem", "when": "view == jumperlessDevice", "group": "7_modification" },
+        { "command": "jumperless.registryOpen", "when": "view == jumperlessScripts || view == jumperlessImages" },
+        { "command": "jumperless.registrySaveToDevice", "when": "(view == jumperlessScripts || view == jumperlessImages) && jumperless.connected" }
+      ],
+      "editor/title": [
+        { "command": "jumperless.run", "when": "jumperless.connected && resourceLangId in jumperless.runnableLanguages", "group": "navigation" },
+        { "command": "jumperless.stop", "when": "jumperless.running", "group": "navigation" }
+      ]
+    },
+    "keybindings": [
+      { "command": "jumperless.run", "key": "f5", "when": "jumperless.connected && editorLangId =~ /^(python|jython)$/ && !inDebugMode" },
+      { "command": "jumperless.stop", "key": "shift+f5", "when": "jumperless.running" }
+    ],
+    "languages": [
+      {
+        "id": "jython",
+        "aliases": ["Jumperless Python", "jumperless-python", "jumperless"],
+        "extensions": [".jython"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "jython",
+        "scopeName": "source.jython",
+        "path": "./syntaxes/jython.tmLanguage.json"
+      },
+      {
+        "scopeName": "jumperless.injection",
+        "path": "./syntaxes/jumperless.tmLanguage.json",
+        "injectTo": ["source.python", "source.jython"]
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "jumperless.oledBin",
+        "displayName": "OLED Bitmap Editor",
+        "selector": [
+          { "filenamePattern": "*.bin" }
+        ],
+        "priority": "default"
+      }
+    ],
+    "colors": [
+      {
+        "id": "jumperless.pink",
+        "description": "Primary Jumperless accent (hot pink)",
+        "defaults": { "dark": "#ff1f8f", "light": "#d6006a", "highContrast": "#ff1f8f" }
+      },
+      {
+        "id": "jumperless.pinkBright",
+        "description": "Brighter Jumperless pink for hover/active states",
+        "defaults": { "dark": "#ff5cb0", "light": "#ff1f8f", "highContrast": "#ff5cb0" }
+      },
+      {
+        "id": "jumperless.rainbow1",
+        "description": "Rainbow stop 1 (red)",
+        "defaults": { "dark": "#ff4d6d", "light": "#ff4d6d", "highContrast": "#ff4d6d" }
+      },
+      {
+        "id": "jumperless.rainbow2",
+        "description": "Rainbow stop 2 (orange)",
+        "defaults": { "dark": "#ff9b54", "light": "#ff9b54", "highContrast": "#ff9b54" }
+      },
+      {
+        "id": "jumperless.rainbow3",
+        "description": "Rainbow stop 3 (yellow)",
+        "defaults": { "dark": "#ffd166", "light": "#ffd166", "highContrast": "#ffd166" }
+      },
+      {
+        "id": "jumperless.rainbow4",
+        "description": "Rainbow stop 4 (green)",
+        "defaults": { "dark": "#06d6a0", "light": "#06d6a0", "highContrast": "#06d6a0" }
+      },
+      {
+        "id": "jumperless.rainbow5",
+        "description": "Rainbow stop 5 (blue)",
+        "defaults": { "dark": "#4cc9f0", "light": "#4cc9f0", "highContrast": "#4cc9f0" }
+      },
+      {
+        "id": "jumperless.rainbow6",
+        "description": "Rainbow stop 6 (violet)",
+        "defaults": { "dark": "#b298dc", "light": "#b298dc", "highContrast": "#b298dc" }
+      }
+    ],
+    "configuration": {
+      "title": "Jumperless",
+      "properties": {
+        "jumperless.serial.baud": {
+          "type": "number",
+          "default": 115200,
+          "description": "Baud rate for serial connection"
+        },
+        "jumperless.serial.preferredPortIndex": {
+          "type": "number",
+          "default": 2,
+          "description": "Preferred port index (0-based) among the 4 Jumperless CDC ports. Default 2 = 3rd port (MicroPython REPL)."
+        },
+        "jumperless.connectOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically connect to the Jumperless on extension activation"
+        },
+        "jumperless.registry.baseUrl": {
+          "type": "string",
+          "default": "https://jumperscripts.kevinc-af9.workers.dev",
+          "description": "Base URL for the JumperNet script/image registry"
+        },
+        "jumperless.apiRef.refreshIntervalDays": {
+          "type": "number",
+          "default": 7,
+          "description": "Days between automatic API reference refreshes"
+        },
+        "jumperless.terminal.convertEol": {
+          "type": "boolean",
+          "default": true,
+          "description": "Convert bare LF (\\n) from the device into CRLF (\\r\\n) so terminal output doesn't 'staircase'. Equivalent to xterm.js convertEol. Disable only if a tool needs raw bytes."
+        },
+        "jumperless.terminal.debugIo": {
+          "type": "boolean",
+          "default": false,
+          "description": "Log every keystroke (input) and any drops/errors to the 'JumperIDE Terminal IO' Output channel. Useful for diagnosing typing-not-reaching-device problems."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "node esbuild.js && vsce package --out jumperide-$npm_package_version.vsix",
+    "install-local": "npm run package && cursor --install-extension jumperide-$npm_package_version.vsix",
+    "reinstall": "npm run install-local",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.84.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0",
+    "@vscode/vsce": "^3.0.0"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0"
+  }
+}

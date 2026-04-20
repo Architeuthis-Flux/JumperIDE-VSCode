@@ -1,0 +1,8 @@
+{
+  "scopeName": "source.jython",
+  "name": "Jumperless Python",
+  "patterns": [
+    { "include": "source.python" },
+    { "include": "jumperless.injection" }
+  ]
+}
