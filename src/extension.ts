@@ -18,7 +18,7 @@ import { loadApiData } from './language/apiData';
 import { JumperlessHoverProvider } from './language/hover';
 import { JumperlessCompletionProvider } from './language/completion';
 import { registerRefresher } from './language/refresher';
-import { registerInitProject } from './stubs/initProject';
+import { registerInitProject, maybeOfferSetup, autoEnsureGlobalSetup } from './stubs/initProject';
 import { registerScriptsView } from './registry/scriptsView';
 import { registerImagesView } from './registry/imagesView';
 import { registerApiRefWebview } from './webviews/apiRef';
@@ -274,6 +274,12 @@ function activateImpl(context: vscode.ExtensionContext): void {
                     replTerminal = terminal;
                     // false = take focus, so keystrokes go to the REPL instead of the editor
                     terminal.show(false);
+                    // The MicroPython startup banner is consumed by the raw-mode
+                    // handshake during connect (before the terminal attaches).
+                    // Now that the terminal is listening, ask the friendly REPL to
+                    // reprint it with Ctrl-B (non-destructive — no soft reset).
+                    const transport = connMgr.transport;
+                    setTimeout(() => { void transport?.write('\x02'); }, 200);
                 } catch (err: any) {
                     outputChannel?.appendLine(`onDidConnect handler error: ${err?.stack || err?.message || err}`);
                 }
@@ -319,6 +325,8 @@ function activateImpl(context: vscode.ExtensionContext): void {
 
     step('registerRefresher', () => registerRefresher(context));
     step('registerInitProject', () => registerInitProject(context));
+    step('autoEnsureGlobalSetup', () => { void autoEnsureGlobalSetup(context); });
+    step('maybeOfferSetup', () => { void maybeOfferSetup(context); });
     step('registerApiRefWebview', () => registerApiRefWebview(context));
     step('registerImage2Oled', () => registerImage2Oled(context));
     step('register OledBinEditor', () =>

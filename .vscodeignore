@@ -4,6 +4,10 @@ tsconfig.json
 esbuild.js
 *.map
 
+# Dev tooling (stub sync runs at package time, not shipped)
+scripts/**
+_validate_*.js
+
 # Dev-only
 .vscode/**
 .gitignore

@@ -4,16 +4,20 @@
   "description": "MicroPython IDE for Jumperless — connect, edit, run, and manage files on your Jumperless board",
   "version": "0.1.0",
   "publisher": "jumperless",
-  "license": "MIT",
-  "icon": "icons/ColorBubbleLogoIDE1x.png",
+  "license": "Unlicense",
+  "icon": "icons/icon.png",
   "galleryBanner": {
     "color": "#1a0a14",
     "theme": "dark"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Architeuthis-Flux/JumperIDE-VSCode"
+    "url": "https://github.com/Architeuthis-Flux/JumperIDE-VSCode.git"
   },
+  "bugs": {
+    "url": "https://github.com/Architeuthis-Flux/JumperIDE-VSCode/issues"
+  },
+  "homepage": "https://github.com/Architeuthis-Flux/JumperIDE-VSCode#readme",
   "engines": {
     "vscode": "^1.84.0"
   },
@@ -88,6 +92,7 @@
       { "command": "jumperless.openApiRef", "title": "Jumperless: Open API Reference" },
       { "command": "jumperless.refreshApiRef", "title": "Jumperless: Refresh API Reference" },
       { "command": "jumperless.initProject", "title": "Jumperless: Initialize Jumperless Project" },
+      { "command": "jumperless.initGlobal", "title": "Jumperless: Set Up Autocomplete Globally (all workspaces)" },
       { "command": "jumperless.pushScriptToRegistry", "title": "Jumperless: Publish Script to Registry" },
       { "command": "jumperless.registryOpen", "title": "Open" },
       { "command": "jumperless.registryOpenImage", "title": "Open in OLED Editor" },
@@ -227,6 +232,41 @@
           "type": "boolean",
           "default": false,
           "description": "Log every keystroke (input) and any drops/errors to the 'JumperIDE Terminal IO' Output channel. Useful for diagnosing typing-not-reaching-device problems."
+        },
+        "jumperless.setup.autoSetUpGlobally": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically set up Jumperless autocomplete globally (all workspaces, including files opened from the device) the first time the extension activates. Turn off if you'd rather set it up per-project."
+        },
+        "jumperless.setup.offerOnFirstOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer per-workspace setup the first time you open a Python file (only used when autoSetUpGlobally is off)."
+        },
+        "jumperless.setup.jumperlessStub": {
+          "type": "boolean",
+          "default": true,
+          "description": "Write typings/jumperless.pyi (the typed API stub). This is the core 'just the Python stubs' piece."
+        },
+        "jumperless.setup.globalRecognition": {
+          "type": "boolean",
+          "default": true,
+          "description": "Make the Jumperless API resolve globally with no imports (writes typings/builtins.pyi layered on the language server's standard library). Turn off to keep only the module stub and use `from jumperless import *`."
+        },
+        "jumperless.setup.includeTimeStub": {
+          "type": "boolean",
+          "default": true,
+          "description": "Also generate a MicroPython `time` stub so ticks_ms()/sleep_ms()/... resolve."
+        },
+        "jumperless.setup.writeProjectConfig": {
+          "type": "boolean",
+          "default": true,
+          "description": "Write pyrightconfig.json and .vscode/settings.json so the analyzer finds typings/ and ignores firmware-only imports."
+        },
+        "jumperless.setup.recommendExtensions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer to install the Python + Pylance extensions when no Python language server is detected."
         }
       }
     }
@@ -234,7 +274,8 @@
   "scripts": {
     "build": "node esbuild.js",
     "watch": "node esbuild.js --watch",
-    "package": "node esbuild.js && vsce package --out jumperide-$npm_package_version.vsix",
+    "sync-stubs": "node scripts/sync-stubs.mjs",
+    "package": "npm run sync-stubs && node esbuild.js && vsce package --out jumperide-$npm_package_version.vsix",
     "install-local": "npm run package && cursor --install-extension jumperide-$npm_package_version.vsix",
     "reinstall": "npm run install-local",
     "lint": "eslint src"

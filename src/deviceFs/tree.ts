@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connection/connectionManager';
 import { FsEntry } from '../connection/rawmode';
+import { openDeviceFile, registerWorkingCopySync } from './workingCopy';
 
 export class DeviceTreeProvider implements vscode.TreeDataProvider<FsEntry> {
     private _onDidChangeTreeData = new vscode.EventEmitter<FsEntry | undefined>();
@@ -24,9 +25,9 @@ export class DeviceTreeProvider implements vscode.TreeDataProvider<FsEntry> {
         );
         if (!isDir) {
             item.command = {
-                command: 'vscode.open',
+                command: 'jumperless.openDeviceFile',
                 title: 'Open',
-                arguments: [vscode.Uri.parse(`jumperless:${element.path}`)],
+                arguments: [element],
             };
             item.contextValue = 'file';
             item.iconPath = new vscode.ThemeIcon('file');
@@ -55,6 +56,14 @@ export function registerDeviceTree(context: vscode.ExtensionContext, connMgr: Co
         treeDataProvider: treeProvider,
     });
     context.subscriptions.push(treeView);
+
+    // Open device files as local working copies so Pylance can analyze them,
+    // and push edits back to the device on save.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('jumperless.openDeviceFile', (entry: FsEntry) =>
+            openDeviceFile(context, connMgr, entry)),
+    );
+    registerWorkingCopySync(context, connMgr);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('jumperless.refreshTree', async () => {
