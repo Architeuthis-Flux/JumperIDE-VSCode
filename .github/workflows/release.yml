@@ -164,4 +164,8 @@ jobs:
 
       - name: Publish to Open VSX
         if: env.OVSX_PAT != ''
-        run: npx --yes ovsx publish jumperide-*.vsix --pat "$OVSX_PAT"
+        run: |
+          # Open VSX requires the namespace (= publisher) to exist before the
+          # first publish. Idempotent: ignore the error if it already exists.
+          npx --yes ovsx create-namespace ArchiteuthisFlux --pat "$OVSX_PAT" || true
+          npx --yes ovsx publish jumperide-*.vsix --pat "$OVSX_PAT"
