@@ -1,25 +1,39 @@
 name: Release
 
-# Builds the .vsix and creates a GitHub Release (with install instructions)
-# when a version tag is pushed:
+# Two ways to ship:
 #
-#   git tag v0.1.0 && git push origin v0.1.0
+# 1. **Automatic (recommended)** — Actions → Release → Run workflow.
+#    Chooses patch/minor/major, bumps package.json, commits to main,
+#    creates tag vX.Y.Z, builds the .vsix, attaches it to a GitHub Release
+#    (marked latest), and publishes to VS Marketplace / Open VSX when tokens
+#    are configured.
 #
-# The tag must match the version in package.json (the workflow verifies this).
+# 2. **Manual tag** — bump version + CHANGELOG locally, then:
+#      git tag v0.1.0 && git push origin v0.1.0
+#    Tag must match package.json. Same build + release + publish steps run.
 #
-# It also publishes to the VS Marketplace and Open VSX (the registry Cursor /
-# VSCodium use), but only if the corresponding token secret is configured:
-#   - VSCE_PAT : Azure DevOps PAT with Marketplace > Manage scope
-#   - OVSX_PAT : Open VSX access token (https://open-vsx.org)
-#
-# Can also be run manually (workflow_dispatch); that builds and uploads the
-# .vsix as a workflow artifact without creating a release or publishing.
+# Secrets (optional, for marketplace publish):
+#   VSCE_PAT : Azure DevOps PAT with Marketplace > Manage scope
+#   OVSX_PAT : Open VSX access token (https://open-vsx.org)
 
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver bump (workflow_dispatch only)
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -32,6 +46,8 @@ jobs:
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -40,13 +56,29 @@ jobs:
 
       - run: npm ci
 
-      - name: Verify tag matches package.json version
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Bump version, commit, and tag
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          PKG_VERSION="$(node -p "require('./package.json').version")"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version "${{ inputs.bump }}" -m "Release v%s"
+          git push origin HEAD:main --follow-tags
+
+      - name: Resolve version
+        id: ver
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${TAG} (package.json ${VERSION})"
+
+      - name: Verify tag matches package.json version
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+          if [ "${{ steps.ver.outputs.version }}" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version ${{ steps.ver.outputs.version }}"
             exit 1
           fi
 
@@ -61,16 +93,22 @@ jobs:
       - name: Upload .vsix artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jumperide-vsix
+          name: jumperide-vsix-${{ steps.ver.outputs.version }}
           path: jumperide-*.vsix
+          if-no-files-found: error
 
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.ver.outputs.tag }}"
           VSIX="jumperide-${VERSION}.vsix"
+
+          if [ ! -f "$VSIX" ]; then
+            echo "::error::Expected $VSIX after packaging"
+            exit 1
+          fi
 
           # Pull this version's section out of CHANGELOG.md (if present)
           awk -v ver="$VERSION" '
@@ -78,6 +116,12 @@ jobs:
             /^## / && found { exit }
             found { print }
           ' CHANGELOG.md > release-notes.md || true
+
+          if [ ! -s release-notes.md ]; then
+            echo "Release ${VERSION}." > release-notes.md
+            echo "" >> release-notes.md
+            echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${TAG}/CHANGELOG.md) for details." >> release-notes.md
+          fi
 
           cat >> release-notes.md <<EOF
 
@@ -101,14 +145,21 @@ jobs:
           **Jumperless: Connect** from the command palette.
           EOF
 
-          gh release create "$GITHUB_REF_NAME" "$VSIX" \
-            --title "JumperIDE $VERSION" \
-            --notes-file release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists — uploading latest .vsix"
+            gh release upload "$TAG" "$VSIX" --clobber
+            gh release edit "$TAG" --notes-file release-notes.md --latest
+          else
+            gh release create "$TAG" "$VSIX" \
+              --title "JumperIDE ${VERSION}" \
+              --notes-file release-notes.md \
+              --latest
+          fi
 
       - name: Publish to VS Marketplace
-        if: startsWith(github.ref, 'refs/tags/') && env.VSCE_PAT != ''
+        if: env.VSCE_PAT != ''
         run: npx vsce publish --packagePath jumperide-*.vsix --pat "$VSCE_PAT"
 
       - name: Publish to Open VSX
-        if: startsWith(github.ref, 'refs/tags/') && env.OVSX_PAT != ''
+        if: env.OVSX_PAT != ''
         run: npx --yes ovsx publish jumperide-*.vsix --pat "$OVSX_PAT"

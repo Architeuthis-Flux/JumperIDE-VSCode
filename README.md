@@ -85,6 +85,15 @@ For example, set `jumperless.setup.globalRecognition` and `jumperless.setup.writ
 
 `stubs/jumperless.pyi` is the canonical typed stub from [JumperlOS](https://github.com/Architeuthis-Flux/JumperlOS) (`scripts/jumperless.pyi`). `npm run package` refreshes it automatically via `npm run sync-stubs`, which copies from a sibling `../JumperlOS` checkout (or `--from <path>` / `$JUMPERLESS_REPO`), falling back to GitHub raw. If no source is reachable it keeps the committed copy.
 
+#### Maintainers: shipping a release
+
+1. Add a `## [X.Y.Z]` section to `CHANGELOG.md` (optional but recommended).
+2. Open **Actions → Release → Run workflow**, pick `patch` / `minor` / `major`.
+
+The workflow bumps `package.json`, commits to `main`, creates tag `vX.Y.Z`, builds `jumperide-X.Y.Z.vsix`, attaches it to the [latest GitHub Release](https://github.com/Architeuthis-Flux/JumperIDE-VSCode/releases/latest), and publishes to the VS Marketplace / Open VSX when `VSCE_PAT` / `OVSX_PAT` repo secrets are set.
+
+To release a version you've already bumped locally instead: `git tag vX.Y.Z && git push origin vX.Y.Z` (tag must match `package.json`).
+
 ## Requirements
 
 - VS Code 1.84+

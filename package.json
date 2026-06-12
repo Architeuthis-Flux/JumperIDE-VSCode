@@ -3,7 +3,7 @@
   "displayName": "JumperIDE",
   "description": "MicroPython IDE for Jumperless — connect, edit, run, and manage files on your Jumperless board",
   "version": "0.1.0",
-  "publisher": "jumperless",
+  "publisher": "ArchiteuthisFlux",
   "license": "Unlicense",
   "icon": "icons/icon.png",
   "galleryBanner": {
