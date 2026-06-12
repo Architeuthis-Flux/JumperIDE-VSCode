@@ -21,6 +21,10 @@
   "engines": {
     "vscode": "^1.84.0"
   },
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
   "categories": [
     "Programming Languages",
     "Other"
@@ -32,14 +36,10 @@
     "serial",
     "embedded"
   ],
-    "activationEvents": [
+  "activationEvents": [
     "onStartupFinished",
     "onLanguage:python",
-    "onFileSystem:jumperless",
-    "onView:jumperlessActions",
-    "onView:jumperlessDevice",
-    "onView:jumperlessScripts",
-    "onView:jumperlessImages"
+    "onFileSystem:jumperless"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -97,8 +97,6 @@
       { "command": "jumperless.registryOpen", "title": "Open" },
       { "command": "jumperless.registryOpenImage", "title": "Open in OLED Editor" },
       { "command": "jumperless.registrySaveToDevice", "title": "Save to Device" },
-      { "command": "jumperless.oledBin.newBitmap", "title": "Jumperless: New OLED Bitmap" },
-      { "command": "jumperless.oledBin.importPng", "title": "Import PNG" },
       { "command": "jumperless.showActivationLog", "title": "Jumperless: Show Activation Log" }
     ],
     "menus": {
@@ -150,7 +148,7 @@
         "selector": [
           { "filenamePattern": "*.bin" }
         ],
-        "priority": "default"
+        "priority": "option"
       }
     ],
     "colors": [
@@ -275,10 +273,9 @@
     "build": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "sync-stubs": "node scripts/sync-stubs.mjs",
-    "package": "npm run sync-stubs && node esbuild.js && vsce package --out jumperide-$npm_package_version.vsix",
+    "package": "npm run sync-stubs && node esbuild.js && vsce package",
     "install-local": "npm run package && cursor --install-extension jumperide-$npm_package_version.vsix",
-    "reinstall": "npm run install-local",
-    "lint": "eslint src"
+    "reinstall": "npm run install-local"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",

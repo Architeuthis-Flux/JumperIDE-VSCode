@@ -94,33 +94,39 @@ export class OledBinEditorProvider implements vscode.CustomEditorProvider<OledBi
         webviewPanel.onDidDispose(() => { subA.dispose(); subB.dispose(); });
 
         webviewPanel.webview.onDidReceiveMessage(async (msg: any) => {
-            switch (msg.type) {
-                case 'save':
-                    document.bytes = new Uint8Array(msg.data);
-                    await vscode.workspace.fs.writeFile(document.uri, document.bytes);
-                    break;
-                case 'dirty':
-                    document.bytes = new Uint8Array(msg.data);
-                    this._onDidChangeCustomDocument.fire({
-                        document,
-                        undo: () => {},
-                        redo: () => {},
-                    });
-                    break;
-                case 'pushFramebuffer':
-                    if (this.connMgr.connected && this.connMgr.transport) {
-                        // Fast path: same as JumperIDE — write directly to the
-                        // normal REPL prompt, no raw mode. Returns instantly so
-                        // 100ms-debounced pushes don't pile up.
-                        await this.connMgr.transport.sendOledFramebufferLive(msg.base64);
-                    }
-                    break;
-                case 'requestState':
-                    webviewPanel.webview.postMessage({
-                        type: 'state',
-                        connected: this.connMgr.connected,
-                    });
-                    break;
+            // The handler's promise is floating: a throw (e.g. device FS write
+            // failing after disconnect) would become an unhandled rejection.
+            try {
+                switch (msg.type) {
+                    case 'save':
+                        document.bytes = new Uint8Array(msg.data);
+                        await vscode.workspace.fs.writeFile(document.uri, document.bytes);
+                        break;
+                    case 'dirty':
+                        document.bytes = new Uint8Array(msg.data);
+                        this._onDidChangeCustomDocument.fire({
+                            document,
+                            undo: () => {},
+                            redo: () => {},
+                        });
+                        break;
+                    case 'pushFramebuffer':
+                        if (this.connMgr.connected && this.connMgr.transport) {
+                            // Fast path: same as JumperIDE — write directly to the
+                            // normal REPL prompt, no raw mode. Returns instantly so
+                            // 100ms-debounced pushes don't pile up.
+                            await this.connMgr.transport.sendOledFramebufferLive(msg.base64);
+                        }
+                        break;
+                    case 'requestState':
+                        webviewPanel.webview.postMessage({
+                            type: 'state',
+                            connected: this.connMgr.connected,
+                        });
+                        break;
+                }
+            } catch (err: any) {
+                vscode.window.showErrorMessage(`OLED editor: ${err.message}`);
             }
         });
     }

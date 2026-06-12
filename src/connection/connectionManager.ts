@@ -14,6 +14,7 @@ export class ConnectionManager {
     private _deviceInfo: DeviceInfo | null = null;
     private _fsTree: FsEntry[] = [];
     private _portPath: string | null = null;
+    private _connecting = false;
     private _statusBar: vscode.StatusBarItem;
     private _onDidConnect = new vscode.EventEmitter<void>();
     private _onDidDisconnect = new vscode.EventEmitter<void>();
@@ -57,6 +58,16 @@ export class ConnectionManager {
     get connected(): boolean { return !!this._transport && this._transport.isOpen; }
 
     async connect(): Promise<void> {
+        if (this._connecting) { return; }
+        this._connecting = true;
+        try {
+            await this.doConnect();
+        } finally {
+            this._connecting = false;
+        }
+    }
+
+    private async doConnect(): Promise<void> {
         if (this.connected) {
             const choice = await vscode.window.showWarningMessage(
                 'Already connected. Disconnect first?', 'Disconnect', 'Cancel');
@@ -81,6 +92,10 @@ export class ConnectionManager {
         this._portPath = portPath;
 
         transport.onDisconnect(() => {
+            // Stale event: this transport was already replaced, or torn down
+            // by disconnect() (which fires onDidDisconnect itself). Without
+            // this guard a manual disconnect would emit the event twice.
+            if (this._transport !== transport) { return; }
             this._transport = null;
             this._deviceInfo = null;
             this._fsTree = [];
@@ -89,7 +104,6 @@ export class ConnectionManager {
             this._onDidDisconnect.fire();
         });
 
-        vscode.commands.executeCommand('setContext', 'jumperless.connected', true);
         this.setStatusBarBusy('Initializing...');
 
         try {
@@ -111,9 +125,17 @@ export class ConnectionManager {
             }
             await transport.write('\x02');
         } catch (err: any) {
-            vscode.window.showWarningMessage(`Device init: ${err.message}. Connected in terminal-only mode.`);
+            if (this._transport === transport && transport.isOpen) {
+                vscode.window.showWarningMessage(`Device init: ${err.message}. Connected in terminal-only mode.`);
+            }
         }
 
+        // The port may have dropped (or been disconnected by the user) while
+        // init was in flight — the disconnect handler already cleaned up, so
+        // don't report a connection that no longer exists.
+        if (this._transport !== transport || !transport.isOpen) { return; }
+
+        vscode.commands.executeCommand('setContext', 'jumperless.connected', true);
         const label = this._deviceInfo?.machine || portPath;
         this.setStatusBarConnected(label, portPath);
 
@@ -122,12 +144,15 @@ export class ConnectionManager {
     }
 
     async disconnect(): Promise<void> {
-        if (this._transport) {
-            await this._transport.close();
-            this._transport = null;
-        }
+        const transport = this._transport;
+        // Clear state before closing so the transport's close-event handler
+        // sees a stale transport and skips — onDidDisconnect fires once, here.
+        this._transport = null;
         this._deviceInfo = null;
         this._fsTree = [];
+        if (transport) {
+            await transport.close();
+        }
         vscode.commands.executeCommand('setContext', 'jumperless.connected', false);
         this.setStatusBarDisconnected();
         this._onDidDisconnect.fire();

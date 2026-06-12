@@ -21,6 +21,8 @@ export interface RegistryEntry {
     width?: number;
     height?: number;
     updatedAt?: string;
+    /** Which registry collection this came from — set by listScripts/listImages. */
+    kind?: 'script' | 'image';
 }
 
 export type ScriptEntry = RegistryEntry;
@@ -64,12 +66,16 @@ function asArray<T>(data: any, key?: string): T[] {
     return [];
 }
 
+function tagged<T extends RegistryEntry>(entries: T[], kind: 'script' | 'image'): T[] {
+    return entries.map(e => ({ ...e, kind }));
+}
+
 export async function listScripts(): Promise<ScriptEntry[]> {
     try {
-        return asArray<ScriptEntry>(await fetchJson<any>(`${baseUrl()}/scripts`), 'scripts');
+        return tagged(asArray<ScriptEntry>(await fetchJson<any>(`${baseUrl()}/scripts`), 'scripts'), 'script');
     } catch {
         try {
-            return asArray<ScriptEntry>(await fetchJson<any>(STATIC_INDEX_URL), 'scripts');
+            return tagged(asArray<ScriptEntry>(await fetchJson<any>(STATIC_INDEX_URL), 'scripts'), 'script');
         } catch {
             return [];
         }
@@ -90,7 +96,7 @@ export async function updateScript(id: string, script: Partial<ScriptEntry>): Pr
 
 export async function listImages(): Promise<ImageEntry[]> {
     try {
-        return asArray<ImageEntry>(await fetchJson<any>(`${baseUrl()}/images`), 'images');
+        return tagged(asArray<ImageEntry>(await fetchJson<any>(`${baseUrl()}/images`), 'images'), 'image');
     } catch {
         return [];
     }

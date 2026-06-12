@@ -32,7 +32,12 @@ node_modules/**
 !node_modules/node-addon-api/**
 !node_modules/node-gyp-build/**
 
-# Inside those, drop developer-only files to keep the package small
+# Drop developer-only files to keep the package small. NOTE: these have no
+# effect inside the node_modules re-includes above — vsce's negated patterns
+# (!...) override every exclusion, so e.g. @serialport's .d.ts files still
+# ship. They do still apply to the rest of the tree (e.g. dist/*.js.map).
+# Do NOT add **/CHANGELOG.md here: it would exclude the root CHANGELOG.md,
+# which the Marketplace uses for the extension's Changelog tab.
 **/test/**
 **/tests/**
 **/__tests__/**
@@ -41,8 +46,6 @@ node_modules/**
 **/*.d.ts
 **/*.ts
 **/*.map
-**/CHANGELOG.md
-**/changelog.md
 **/CONTRIBUTING.md
 **/.travis.yml
 **/.eslintrc*

@@ -28,6 +28,17 @@ Marketplace). Suggested shots:
 
 _Screenshots coming soon._
 
+## Installation
+
+**From the Marketplace** — search for "JumperIDE" in the Extensions view (VS Code) or on [Open VSX](https://open-vsx.org) (Cursor / VSCodium).
+
+**From a GitHub release** — download the `.vsix` from the [latest release](https://github.com/Architeuthis-Flux/JumperIDE-VSCode/releases/latest), then in the Extensions view open the `...` menu and choose **Install from VSIX...**, or install from the command line:
+
+```sh
+code --install-extension jumperide-<version>.vsix     # VS Code
+cursor --install-extension jumperide-<version>.vsix   # Cursor
+```
+
 ## Getting Started
 
 1. Install the extension

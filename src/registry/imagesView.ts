@@ -85,8 +85,11 @@ export function registerImagesView(
                 vscode.window.showWarningMessage('Not connected to a Jumperless');
                 return;
             }
-            const isImage = entry.width !== undefined || entry.height !== undefined ||
-                (typeof entry.id === 'string' && entry.id.length > 0 && !entry.content);
+            // Entries are tagged by the registry client. The old heuristic
+            // ("has an id but no content") classified every script list item
+            // as an image, corrupting scripts saved to the device.
+            const isImage = entry.kind === 'image' ||
+                (entry.kind === undefined && (entry.width !== undefined || entry.height !== undefined));
 
             const defaultName = isImage
                 ? `/images/${entry.name || entry.id}.bin`

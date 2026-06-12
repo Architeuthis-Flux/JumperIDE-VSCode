@@ -49,7 +49,11 @@ export class JumperlessFileSystemProvider implements vscode.FileSystemProvider {
         if (!this.connMgr.connected) {
             throw vscode.FileSystemError.Unavailable('Not connected');
         }
-        return this.connMgr.withRawMode(raw => raw.readFile(uri.path));
+        try {
+            return await this.connMgr.withRawMode(raw => raw.readFile(uri.path));
+        } catch (err) {
+            throw this.mapError(uri, err);
+        }
     }
 
     async writeFile(uri: vscode.Uri, content: Uint8Array,
@@ -57,13 +61,26 @@ export class JumperlessFileSystemProvider implements vscode.FileSystemProvider {
         if (!this.connMgr.connected) {
             throw vscode.FileSystemError.Unavailable('Not connected');
         }
-        await this.connMgr.withRawMode(async raw => {
-            if (options.create) {
-                const dir = uri.path.substring(0, uri.path.lastIndexOf('/'));
-                if (dir) { await raw.makePath(dir); }
-            }
-            await raw.writeFile(uri.path, content);
-        });
+        try {
+            await this.connMgr.withRawMode(async raw => {
+                if (options.create) {
+                    const dir = uri.path.substring(0, uri.path.lastIndexOf('/'));
+                    if (dir) { await raw.makePath(dir); }
+                }
+                await raw.writeFile(uri.path, content);
+            });
+        } catch (err) {
+            throw this.mapError(uri, err);
+        }
+        // Keep the cached walkFs() tree in sync — stat()/readDirectory() are
+        // served from it. Existing file: patch the size in place. New file:
+        // re-walk the device so the entry (and any created dirs) appear.
+        const entry = this.findEntry(uri.path);
+        if (entry) {
+            entry.size = content.byteLength;
+        } else {
+            void this.connMgr.refreshTree().catch(() => {});
+        }
         this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Changed, uri }]);
     }
 
@@ -71,7 +88,12 @@ export class JumperlessFileSystemProvider implements vscode.FileSystemProvider {
         if (!this.connMgr.connected) {
             throw vscode.FileSystemError.Unavailable('Not connected');
         }
-        await this.connMgr.withRawMode(raw => raw.makePath(uri.path));
+        try {
+            await this.connMgr.withRawMode(raw => raw.makePath(uri.path));
+        } catch (err) {
+            throw this.mapError(uri, err);
+        }
+        void this.connMgr.refreshTree().catch(() => {});
         this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Created, uri }]);
     }
 
@@ -80,18 +102,40 @@ export class JumperlessFileSystemProvider implements vscode.FileSystemProvider {
             throw vscode.FileSystemError.Unavailable('Not connected');
         }
         const entry = this.findEntry(uri.path);
-        await this.connMgr.withRawMode(async raw => {
-            if (entry?.content) {
-                await raw.removeDir(uri.path);
-            } else {
-                await raw.removeFile(uri.path);
-            }
-        });
+        try {
+            await this.connMgr.withRawMode(async raw => {
+                if (entry?.content) {
+                    await raw.removeDir(uri.path);
+                } else {
+                    await raw.removeFile(uri.path);
+                }
+            });
+        } catch (err) {
+            throw this.mapError(uri, err);
+        }
+        void this.connMgr.refreshTree().catch(() => {});
         this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Deleted, uri }]);
     }
 
     rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean }): void {
         throw vscode.FileSystemError.NoPermissions('Rename not yet supported');
+    }
+
+    /**
+     * Map raw-REPL errors (MicroPython tracebacks / transport failures) to
+     * vscode.FileSystemError so the editor shows proper not-found / retry UX
+     * instead of an opaque failure.
+     */
+    private mapError(uri: vscode.Uri, err: unknown): vscode.FileSystemError {
+        if (err instanceof vscode.FileSystemError) { return err; }
+        const msg = String((err as any)?.message ?? err);
+        if (/ENOENT|Errno 2\b|errno 2\b/.test(msg)) {
+            return vscode.FileSystemError.FileNotFound(uri);
+        }
+        if (/EACCES|Errno 13\b/.test(msg)) {
+            return vscode.FileSystemError.NoPermissions(uri);
+        }
+        return vscode.FileSystemError.Unavailable(`${uri.path}: ${msg}`);
     }
 
     private findEntry(path: string): FsEntry | undefined {

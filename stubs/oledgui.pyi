@@ -254,13 +254,25 @@ class Screen:
         _screen_clear(self.handle)
         self.elements = []
 
-    def show(self):
-        """Make this the active screen (starts live rendering)."""
-        _screen_show(self.handle)
+    def show(self, persist=False):
+        """Make this the active screen (starts live rendering).
+
+        persist=False (default): a one-shot foreground show. The screen is
+        displayed and live-updates while it's on top, but it does NOT come back
+        on its own once other content (a menu, a toast, ...) draws over it, and
+        it's torn down when the Python script/REPL session ends.
+
+        persist=True: the screen takes the place of the boot logo as the idle
+        display. Whenever the UI returns to idle (e.g. leaving a menu) it is
+        redrawn automatically, it steps aside while other content is shown
+        instead of fighting it, and it survives the script that created it.
+        Call oledgui.hide() to take it down."""
+        _screen_show(self.handle, 1 if persist else 0)
         return self
 
     def hide(self):
-        """Stop showing any active screen."""
+        """Stop showing this screen and forget any persistent idle registration
+        so it won't reappear when the UI next returns to idle."""
         _screen_hide()
 
     def save(self, name):

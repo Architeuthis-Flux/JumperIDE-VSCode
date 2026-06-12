@@ -1,0 +1,114 @@
+name: Release
+
+# Builds the .vsix and creates a GitHub Release (with install instructions)
+# when a version tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The tag must match the version in package.json (the workflow verifies this).
+#
+# It also publishes to the VS Marketplace and Open VSX (the registry Cursor /
+# VSCodium use), but only if the corresponding token secret is configured:
+#   - VSCE_PAT : Azure DevOps PAT with Marketplace > Manage scope
+#   - OVSX_PAT : Open VSX access token (https://open-vsx.org)
+#
+# Can also be run manually (workflow_dispatch); that builds and uploads the
+# .vsix as a workflow artifact without creating a release or publishing.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Builds dist/, syncs stubs from JumperlOS (falls back to GitHub raw in
+      # CI), and produces jumperide-<version>.vsix.
+      - name: Package
+        run: npm run package
+
+      - name: Upload .vsix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jumperide-vsix
+          path: jumperide-*.vsix
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          VSIX="jumperide-${VERSION}.vsix"
+
+          # Pull this version's section out of CHANGELOG.md (if present)
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { found=1; next }
+            /^## / && found { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md || true
+
+          cat >> release-notes.md <<EOF
+
+          ## Installation
+
+          Download \`${VSIX}\` from the assets below, then either:
+
+          **From the UI** — open the Extensions view, click the \`...\` menu in
+          its title bar, choose **Install from VSIX...**, and pick the
+          downloaded file.
+
+          **From the command line:**
+
+          \`\`\`sh
+          code --install-extension ${VSIX}     # VS Code
+          cursor --install-extension ${VSIX}   # Cursor
+          codium --install-extension ${VSIX}   # VSCodium
+          \`\`\`
+
+          Then reload the window, plug in your Jumperless V5, and run
+          **Jumperless: Connect** from the command palette.
+          EOF
+
+          gh release create "$GITHUB_REF_NAME" "$VSIX" \
+            --title "JumperIDE $VERSION" \
+            --notes-file release-notes.md
+
+      - name: Publish to VS Marketplace
+        if: startsWith(github.ref, 'refs/tags/') && env.VSCE_PAT != ''
+        run: npx vsce publish --packagePath jumperide-*.vsix --pat "$VSCE_PAT"
+
+      - name: Publish to Open VSX
+        if: startsWith(github.ref, 'refs/tags/') && env.OVSX_PAT != ''
+        run: npx --yes ovsx publish jumperide-*.vsix --pat "$OVSX_PAT"

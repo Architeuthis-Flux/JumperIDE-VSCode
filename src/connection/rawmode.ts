@@ -9,6 +9,15 @@ import { report } from '../utils';
 
 let replPrompts: string[] = [];
 
+/**
+ * Escape a value for interpolation inside a single-quoted Python string.
+ * Without this, a filename containing ' or \ breaks out of the string and
+ * corrupts (or worse, becomes part of) the raw-REPL command.
+ */
+function pyQuote(s: string): string {
+    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 export interface DeviceInfo {
     machine: string;
     release: string;
@@ -142,14 +151,21 @@ try:
  h(b'')
 except:
  h=lambda b: ''.join('{:02x}'.format(byte) for byte in b)
-with open('${fn}','rb') as f:
+with open('${pyQuote(fn)}','rb') as f:
  while 1:
   b=f.read(64)
   if not b:break
   print(h(b),end='')
 `);
-        if (rsp.length) {
-            return new Uint8Array(rsp.match(/../g)!.map(h => parseInt(h, 16)));
+        const hex = rsp.trim();
+        if (hex.length) {
+            // A truncated/garbled response must fail loudly — matching /../g
+            // on odd-length hex would silently drop the last nibble and hand
+            // back a corrupt file.
+            if (hex.length % 2 !== 0 || /[^0-9a-fA-F]/.test(hex)) {
+                throw new Error(`Corrupt read from device for ${fn}`);
+            }
+            return new Uint8Array(hex.match(/../g)!.map(h => parseInt(h, 16)));
         }
         return new Uint8Array();
     }
@@ -184,9 +200,9 @@ o=f.write
             await this.exec(cmdHex);
         }
         await this.exec(`f.close()
-try: os.remove('${fn}')
+try: os.remove('${pyQuote(fn)}')
 except: pass
-os.rename('${dest}','${fn}')
+os.rename('${dest}','${pyQuote(fn)}')
 `);
     }
 
@@ -267,7 +283,7 @@ walk('')
 
     async getFsStats(path = '/'): Promise<[string, string, string]> {
         const rsp = await this.exec(`
-s = os.statvfs('${path}')
+s = os.statvfs('${pyQuote(path)}')
 fs = s[1] * s[2]
 ff = s[3] * s[0]
 fu = fs - ff
@@ -277,13 +293,13 @@ print('%s|%s|%s'%(fu,ff,fs))
     }
 
     async touchFile(fn: string): Promise<void> {
-        await this.exec(`f=open('${fn}','wb')\nf.close()`);
+        await this.exec(`f=open('${pyQuote(fn)}','wb')\nf.close()`);
     }
 
     async makePath(path: string): Promise<void> {
         await this.exec(`
 p=''
-for d in '${path}'.split('/'):
+for d in '${pyQuote(path)}'.split('/'):
  if not d: continue
  p += '/'+d
  try: os.mkdir(p)
@@ -293,11 +309,21 @@ for d in '${path}'.split('/'):
     }
 
     async removeFile(path: string): Promise<void> {
-        await this.exec(`os.remove('${path}')`);
+        await this.exec(`os.remove('${pyQuote(path)}')`);
     }
 
+    /** Recursively delete a directory (os.rmdir alone fails on non-empty dirs). */
     async removeDir(path: string): Promise<void> {
-        await this.exec(`os.rmdir('${path}')`);
+        await this.exec(`
+def _rm(p):
+ if os.stat(p)[0] & 0x4000:
+  for n in os.listdir(p):
+   _rm(p+'/'+n)
+  os.rmdir(p)
+ else:
+  os.remove(p)
+_rm('${pyQuote(path)}')
+`);
     }
 
     async pushFramebuffer(base64Data: string): Promise<void> {
