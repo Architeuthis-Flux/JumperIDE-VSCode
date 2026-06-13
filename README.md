@@ -16,13 +16,12 @@
 
 The [Jumperless V5](https://docs.jumperless.org) is a breadboard with software-defined connections — routing, ±8 V power supplies, DACs, ADCs, GPIO, all scriptable from onboard MicroPython. This extension is the VS Code counterpart to the [web JumperIDE](https://ide.jumperless.org):
 
-- **F5** runs the current file on the board; **Shift+F5** stops it.
-- The board's filesystem shows up in the sidebar — open, edit, save back.
-- The Jumperless API (`connect()`, `dac_set()`, `oled_print()`, `TOP_RAIL`, …) autocompletes and type-checks **with no imports**, matching how scripts run on the device.
+
 
 ## A quick tour
 
-[▶ Watch the demo video](https://github.com/Architeuthis-Flux/JumperIDE-VSCode/blob/main/images/JumperIDEdemo.mp4)
+
+![Walkthrough](images/JumperIDEwalkthrough.gif)
 
 **Connect** — the board's serial ports are auto-detected by USB ID, with the MicroPython REPL port pre-selected:
 
@@ -37,8 +36,6 @@ The [Jumperless V5](https://docs.jumperless.org) is a breadboard with software-d
 ![Serial terminal port picker](images/TerminalConnect.png)
 
 **OLED bitmap editor** — draw pixels and watch them appear on the board's OLED live:
-
-![OLED bitmap editor](images/BitmapEditor.png)
 
 ![Editing an OLED bitmap with live push to the device](images/EditingOLED.gif)
 
