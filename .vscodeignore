@@ -19,11 +19,15 @@ _validate_*.js
 typings/**
 pyrightconfig.json
 
-# Big assets we don't ship — only the icons used by the manifest matter
+# Big assets we don't ship — only the icons used by the manifest matter.
+# DirtyDeedsJumperlessRGB.png is the README hero banner only; vsce rewrites
+# the relative link to a GitHub raw URL, so the marketplace loads it from the
+# repo and we don't ship the 1.5 MB file.
 icons/JumperlessWheelMain.png
 icons/icon4096fc.svg
 icons/iconPlay2048.png
 icons/iconStop2048.png
+icons/DirtyDeedsJumperlessRGB.png
 
 # README media — vsce rewrites relative links to GitHub raw URLs, so the
 # marketplace serves these from the repo; no need to ship ~13 MB in the VSIX.
