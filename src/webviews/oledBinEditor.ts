@@ -5,6 +5,8 @@
  */
 
 import * as vscode from 'vscode';
+import * as os from 'os';
+import * as path from 'path';
 import { ConnectionManager } from '../connection/connectionManager';
 
 interface OledParsed {
@@ -12,6 +14,67 @@ interface OledParsed {
     height: number;
     dataOffset: number;
     hasHeader: boolean;
+}
+
+/**
+ * Blank OLED .bin: 4-byte LE width/height header + zeroed bitmap.
+ * Same as the web JumperIDE's defaultOledBinBytes(). 128x32 -> 516 bytes.
+ */
+export function blankOledBin(width = 128, height = 32): Uint8Array {
+    const w = Math.max(1, Math.min(128, width));
+    const h = Math.max(1, Math.min(64, height));
+    const bitmapLen = Math.floor((w * h + 7) / 8);
+    const out = new Uint8Array(4 + bitmapLen);
+    out[0] = w & 0xff;
+    out[1] = (w >> 8) & 0xff;
+    out[2] = h & 0xff;
+    out[3] = (h >> 8) & 0xff;
+    return out;
+}
+
+/** Create a blank 128x32 .bin (on the device or locally) and open the editor. */
+async function newOledBitmap(connMgr: ConnectionManager): Promise<void> {
+    const bytes = blankOledBin();
+
+    let onDevice = false;
+    if (connMgr.connected) {
+        const pick = await vscode.window.showQuickPick(
+            [
+                { label: '$(circuit-board) On the Jumperless', description: 'Create the file on the device', device: true },
+                { label: '$(folder) On this computer', description: 'Save the file locally', device: false },
+            ],
+            { title: 'Where should the new OLED bitmap live?' },
+        );
+        if (!pick) { return; }
+        onDevice = pick.device;
+    }
+
+    if (onDevice) {
+        const name = await vscode.window.showInputBox({
+            prompt: 'Device path for the new bitmap',
+            value: '/oled.bin',
+            validateInput: v => v.startsWith('/') ? undefined : 'Path must start with /',
+        });
+        if (!name) { return; }
+        await connMgr.withRawMode(raw => raw.writeFile(name, bytes));
+        await connMgr.refreshTree();
+        await vscode.commands.executeCommand(
+            'vscode.openWith',
+            vscode.Uri.from({ scheme: 'jumperless', path: name }),
+            'jumperless.oledBin',
+        );
+        return;
+    }
+
+    const defaultDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir();
+    const dest = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(path.join(defaultDir, 'oled.bin')),
+        filters: { 'OLED bitmap': ['bin'] },
+        saveLabel: 'Create',
+    });
+    if (!dest) { return; }
+    await vscode.workspace.fs.writeFile(dest, bytes);
+    await vscode.commands.executeCommand('vscode.openWith', dest, 'jumperless.oledBin');
 }
 
 function parseOledBin(bytes: Uint8Array): OledParsed | null {
@@ -59,6 +122,15 @@ export class OledBinEditorProvider implements vscode.CustomEditorProvider<OledBi
     ) {}
 
     static register(context: vscode.ExtensionContext, connMgr: ConnectionManager): vscode.Disposable {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('jumperless.newOledBitmap', async () => {
+                try {
+                    await newOledBitmap(connMgr);
+                } catch (err: any) {
+                    vscode.window.showErrorMessage(`Couldn't create OLED bitmap: ${err?.message || err}`);
+                }
+            }),
+        );
         const provider = new OledBinEditorProvider(connMgr, context.extensionUri);
         return vscode.window.registerCustomEditorProvider(
             OledBinEditorProvider.viewType, provider, {

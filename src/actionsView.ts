@@ -1,7 +1,7 @@
 /**
- * "Actions" sidebar webview — buttons for Connect, Run, Stop, Save,
- * Upload, Refresh. Buttons enable/disable based on connection
- * and run state.
+ * "Actions" sidebar webview — a combined connection status/toggle button plus
+ * Run, Stop, Save, Refresh. Buttons enable/disable based on connection and
+ * run state.
  *
  * Themed pink + rainbow with the Jumperless bubble logo as the header.
  */
@@ -54,11 +54,13 @@ export class ActionsViewProvider implements vscode.WebviewViewProvider {
                 case 'disconnect': vscode.commands.executeCommand('jumperless.disconnect'); break;
                 case 'run': vscode.commands.executeCommand('jumperless.run'); break;
                 case 'stop': vscode.commands.executeCommand('jumperless.stop'); break;
-                case 'save': vscode.commands.executeCommand('workbench.action.files.save'); break;
-                case 'upload': vscode.commands.executeCommand('jumperless.uploadCurrentFile'); break;
+                case 'save': vscode.commands.executeCommand('jumperless.saveToDevice'); break;
+                case 'saveLocal': vscode.commands.executeCommand('jumperless.saveLocally'); break;
                 case 'refresh': vscode.commands.executeCommand('jumperless.refreshTree'); break;
                 case 'openTerminal': vscode.commands.executeCommand('jumperless.showTerminal'); break;
                 case 'apiRef': vscode.commands.executeCommand('jumperless.openApiRef'); break;
+                case 'newOled': vscode.commands.executeCommand('jumperless.newOledBitmap'); break;
+                case 'serialTerm': vscode.commands.executeCommand('jumperless.openSerialTerminal'); break;
                 case 'initProject': vscode.commands.executeCommand('jumperless.initProject'); break;
                 case 'publish': vscode.commands.executeCommand('jumperless.pushScriptToRegistry'); break;
             }
@@ -192,33 +194,45 @@ button.danger:hover:not(:disabled) {
 }
 
 .icon { font-family: codicon; font-size: 14px; }
-.status {
-    padding: 6px 8px;
-    margin: 0 0 10px;
+
+/* Combined connection status + toggle: shows state at rest, action on hover. */
+button.conn {
+    width: 100%;
+    padding: 8px 10px;
+    margin: 0 0 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: 4px;
     background: var(--vscode-textBlockQuote-background);
-    border-left: 3px solid var(--jl-pink);
-    font-size: 11px;
+    color: var(--vscode-foreground);
+    border: 1.5px solid transparent;
+}
+button.conn.disconnected {
+    border: 1.5px solid transparent;
+    border-left: 3px solid #888;
     border-radius: 0 4px 4px 0;
-    position: relative;
-    overflow: hidden;
+    opacity: 0.85;
 }
-.status.disconnected { border-left-color: #888; opacity: 0.85; }
-.status.connected {
-    border-left-color: transparent;
+button.conn.connected, button.conn.running {
     background:
         linear-gradient(var(--vscode-textBlockQuote-background), var(--vscode-textBlockQuote-background)) padding-box,
         var(--jl-rainbow) border-box;
     border: 1.5px solid transparent;
-    border-radius: 4px;
 }
-.status.running {
-    border-left-color: transparent;
-    background:
-        linear-gradient(var(--vscode-textBlockQuote-background), var(--vscode-textBlockQuote-background)) padding-box,
-        var(--jl-rainbow) border-box;
-    border: 1.5px solid transparent;
-    border-radius: 4px;
-    animation: pulse 1.6s ease-in-out infinite;
+button.conn.running { animation: pulse 1.6s ease-in-out infinite; }
+button.conn.hover-connect {
+    background: var(--jl-pink);
+    color: #fff;
+    border: 1.5px solid var(--jl-pink-bright);
+    opacity: 1;
+    box-shadow: 0 0 0 1px rgba(255,31,143,0.25), 0 1px 6px rgba(255,31,143,0.35);
+}
+button.conn.hover-disconnect {
+    background: linear-gradient(135deg, #c2185b, #ff1f8f);
+    color: #fff;
+    border: 1.5px solid #ff5cb0;
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(255,31,143,0.35);
 }
 @keyframes pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(255,31,143,0.0); }
@@ -231,13 +245,7 @@ button.danger:hover:not(:disabled) {
     <img src="${logoUri}" alt="Jumperless"/>
 </div>
 <div class="body">
-<div id="status" class="status disconnected">Disconnected</div>
-
-<div class="section">
-    <h3>Connection</h3>
-    <div class="btn-row"><button id="btn-connect" class="primary">Connect</button></div>
-    <div class="btn-row"><button id="btn-disconnect">Disconnect</button></div>
-</div>
+<button id="btn-conn" class="conn disconnected">○ Disconnected</button>
 
 <div class="section">
     <h3>Execute</h3>
@@ -247,15 +255,17 @@ button.danger:hover:not(:disabled) {
 
 <div class="section">
     <h3>File</h3>
-    <div class="btn-row"><button id="btn-save">💾 Save</button></div>
-    <div class="btn-row"><button id="btn-upload">⬆ Upload to Device</button></div>
+    <div class="btn-row"><button id="btn-save" title="Save the current file onto the Jumperless. Files opened from the device go back to their original path; other files ask for a device path.">💾 Save to Jumperless</button></div>
+    <div class="btn-row"><button id="btn-save-local" title="Save a copy of the current file on your computer.">💾 Save Locally</button></div>
+    <div class="btn-row"><button id="btn-new-oled" title="Create a blank 128x32 OLED bitmap (.bin) and open it in the editor.">🖼 New OLED Bitmap</button></div>
     <div class="btn-row"><button id="btn-refresh">↻ Refresh Files</button></div>
 </div>
 
 <div class="section">
     <h3>Tools</h3>
     <div class="btn-row"><button id="btn-api-ref">📖 API Reference</button></div>
-    <div class="btn-row"><button id="btn-init">⚙ Initialize Project</button></div>
+    <div class="btn-row"><button id="btn-serial-term" title="Open a serial terminal — pick a port (port1 is the device menu) or launch the Jumperless App.">🖥 Serial Terminal</button></div>
+    <div class="btn-row"><button id="btn-init" title="Optional: add Jumperless autocomplete to one of your own folders. Files opened from the device already work.">⚙ Set Up Folder for Jumperless</button></div>
     <div class="btn-row"><button id="btn-publish">↗ Publish to JumperNet</button></div>
 </div>
 </div>
@@ -264,20 +274,22 @@ button.danger:hover:not(:disabled) {
 const vscode = acquireVsCodeApi();
 const $ = id => document.getElementById(id);
 const buttons = {
-    connect: $('btn-connect'), disconnect: $('btn-disconnect'),
     run: $('btn-run'), stop: $('btn-stop'),
-    save: $('btn-save'), upload: $('btn-upload'),
+    save: $('btn-save'), saveLocal: $('btn-save-local'),
     refresh: $('btn-refresh'),
-    apiRef: $('btn-api-ref'), initProject: $('btn-init'),
+    apiRef: $('btn-api-ref'), newOled: $('btn-new-oled'),
+    serialTerm: $('btn-serial-term'),
+    initProject: $('btn-init'),
     publish: $('btn-publish'),
 };
 
 const cmd = {
-    connect: 'connect', disconnect: 'disconnect',
     run: 'run', stop: 'stop',
-    save: 'save', upload: 'upload',
+    save: 'save', saveLocal: 'saveLocal',
     refresh: 'refresh',
-    apiRef: 'apiRef', initProject: 'initProject',
+    apiRef: 'apiRef', newOled: 'newOled',
+    serialTerm: 'serialTerm',
+    initProject: 'initProject',
     publish: 'publish',
 };
 
@@ -285,34 +297,56 @@ for (const [key, btn] of Object.entries(buttons)) {
     btn.addEventListener('click', () => vscode.postMessage({ command: cmd[key] }));
 }
 
-const statusEl = $('status');
+// Connection button: status at rest, Connect/Disconnect on hover, click toggles.
+const connBtn = $('btn-conn');
+let state = { connected: false, running: false, deviceLabel: '' };
+let connHover = false;
+
+function renderConn() {
+    const { connected, running, deviceLabel } = state;
+    connBtn.classList.remove('connected', 'disconnected', 'running', 'hover-connect', 'hover-disconnect');
+    if (connHover) {
+        if (connected || running) {
+            connBtn.classList.add('hover-disconnect');
+            connBtn.textContent = '✕ Disconnect';
+        } else {
+            connBtn.classList.add('hover-connect');
+            connBtn.textContent = '⚡ Connect';
+        }
+        return;
+    }
+    if (running) {
+        connBtn.classList.add('running');
+        connBtn.textContent = '▶ Running on ' + (deviceLabel || 'device');
+    } else if (connected) {
+        connBtn.classList.add('connected');
+        connBtn.textContent = '● Connected: ' + (deviceLabel || 'Jumperless');
+    } else {
+        connBtn.classList.add('disconnected');
+        connBtn.textContent = '○ Disconnected';
+    }
+}
+
+connBtn.addEventListener('mouseenter', () => { connHover = true; renderConn(); });
+connBtn.addEventListener('mouseleave', () => { connHover = false; renderConn(); });
+connBtn.addEventListener('click', () =>
+    vscode.postMessage({ command: state.connected || state.running ? 'disconnect' : 'connect' }));
 
 function setState(s) {
-    const { connected, running, deviceLabel } = s;
-    buttons.connect.disabled = connected;
-    buttons.disconnect.disabled = !connected;
+    state = s;
+    const { connected, running } = s;
     buttons.run.disabled = !connected || running;
     buttons.stop.disabled = !running;
-    buttons.upload.disabled = !connected;
+    buttons.save.disabled = !connected;
     buttons.refresh.disabled = !connected;
-    statusEl.classList.remove('connected', 'disconnected', 'running');
-    if (running) {
-        statusEl.classList.add('running');
-        statusEl.textContent = '▶ Running on ' + (deviceLabel || 'device');
-    } else if (connected) {
-        statusEl.classList.add('connected');
-        statusEl.textContent = '● Connected: ' + (deviceLabel || 'Jumperless');
-    } else {
-        statusEl.classList.add('disconnected');
-        statusEl.textContent = '○ Disconnected';
-    }
+    renderConn();
 }
 
 window.addEventListener('message', e => {
     if (e.data?.type === 'state') setState(e.data);
 });
 
-setState({ connected: false, running: false });
+setState(state);
 </script>
 </body>
 </html>`;

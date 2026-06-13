@@ -15,11 +15,19 @@ _validate_*.js
 .github/**
 *.vsix
 
+# Artifacts of running the folder setup command on this repo itself
+typings/**
+pyrightconfig.json
+
 # Big assets we don't ship — only the icons used by the manifest matter
 icons/JumperlessWheelMain.png
 icons/icon4096fc.svg
 icons/iconPlay2048.png
 icons/iconStop2048.png
+
+# README media — vsce rewrites relative links to GitHub raw URLs, so the
+# marketplace serves these from the repo; no need to ship ~13 MB in the VSIX.
+images/**
 
 # node_modules: exclude EVERYTHING, then selectively re-include only the
 # runtime dependencies of `serialport` (which we mark external in esbuild

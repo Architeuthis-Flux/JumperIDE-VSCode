@@ -55,6 +55,8 @@ export class JumperlessREPL implements vscode.Pseudoterminal {
     readonly onDidWrite = this.writeEmitter.event;
     readonly onDidClose = this.closeEmitter.event;
 
+    constructor(private readonly banner: string = 'Jumperless REPL ready') {}
+
     private transport: Transport | null = null;
     private prevReceive: ((data: string) => void) | null = null;
 
@@ -147,7 +149,7 @@ export class JumperlessREPL implements vscode.Pseudoterminal {
     }
 
     open(): void {
-        this.writeEmitter.fire('\x1b[32mJumperless REPL ready\x1b[0m\r\n');
+        this.writeEmitter.fire(`\x1b[32m${this.banner}\x1b[0m\r\n`);
         this.lastByteWasCR = true;
     }
 

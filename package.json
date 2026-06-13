@@ -127,8 +127,27 @@
         "icon": "$(trash)"
       },
       {
-        "command": "jumperless.uploadCurrentFile",
-        "title": "Jumperless: Upload Current File to Device"
+        "command": "jumperless.saveToDevice",
+        "title": "Jumperless: Save Current File to Jumperless"
+      },
+      {
+        "command": "jumperless.saveLocally",
+        "title": "Jumperless: Save Current File Locally"
+      },
+      {
+        "command": "jumperless.newOledBitmap",
+        "title": "Jumperless: New OLED Bitmap",
+        "icon": "$(file-media)"
+      },
+      {
+        "command": "jumperless.openAppTerminal",
+        "title": "Jumperless: Open Jumperless App Terminal",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "jumperless.openSerialTerminal",
+        "title": "Jumperless: Open Serial Terminal",
+        "icon": "$(terminal)"
       },
       {
         "command": "jumperless.openApiRef",
@@ -140,7 +159,7 @@
       },
       {
         "command": "jumperless.initProject",
-        "title": "Jumperless: Initialize Jumperless Project"
+        "title": "Jumperless: Set Up This Folder for Jumperless Python"
       },
       {
         "command": "jumperless.initGlobal",
@@ -193,6 +212,11 @@
           "command": "jumperless.newDeviceDir",
           "when": "view == jumperlessDevice && jumperless.connected",
           "group": "navigation"
+        },
+        {
+          "command": "jumperless.newOledBitmap",
+          "when": "view == jumperlessDevice",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -233,6 +257,12 @@
         "command": "jumperless.stop",
         "key": "shift+f5",
         "when": "jumperless.running"
+      },
+      {
+        "command": "workbench.action.terminal.sendSequence",
+        "key": "ctrl+q",
+        "args": { "text": "\u0011" },
+        "when": "terminalFocus && jumperless.terminalActive"
       }
     ],
     "languages": [
@@ -391,7 +421,7 @@
         "jumperless.setup.autoSetUpGlobally": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically set up Jumperless autocomplete globally (all workspaces, including files opened from the device) the first time the extension activates. Turn off if you'd rather set it up per-project."
+          "description": "Automatically keep Jumperless autocomplete set up globally (all workspaces, including files opened from the device). Turn off if you'd rather set it up per-folder with \"Set Up This Folder for Jumperless Python\"."
         },
         "jumperless.setup.offerOnFirstOpen": {
           "type": "boolean",
@@ -437,11 +467,12 @@
   "devDependencies": {
     "@types/node": "^18.19.0",
     "@types/vscode": "^1.84.0",
+    "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.24.0",
-    "typescript": "^5.7.0",
-    "@vscode/vsce": "^3.0.0"
+    "typescript": "^5.7.0"
   },
   "dependencies": {
+    "jsonc-parser": "^3.3.1",
     "serialport": "^12.0.0"
   }
 }

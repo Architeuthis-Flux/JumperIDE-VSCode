@@ -25,6 +25,8 @@ import { registerApiRefWebview } from './webviews/apiRef';
 import { registerImage2Oled } from './webviews/image2oled';
 import { OledBinEditorProvider } from './webviews/oledBinEditor';
 import { registerStatusBarCommands } from './statusBar';
+import { registerAppTerminal } from './appTerminal';
+import { registerSerialTerminal } from './serialTerminal';
 import { ActionsViewProvider } from './actionsView';
 import { getConfig } from './utils';
 
@@ -333,11 +335,24 @@ function activateImpl(context: vscode.ExtensionContext): void {
         context.subscriptions.push(OledBinEditorProvider.register(context, connMgr)),
     );
     step('registerStatusBarCommands', () => registerStatusBarCommands(context, connMgr));
+    step('registerAppTerminal', () => registerAppTerminal(context));
+    step('registerSerialTerminal', () => registerSerialTerminal(context));
 
     step('setContext defaults', () => {
         vscode.commands.executeCommand('setContext', 'jumperless.connected', false);
         vscode.commands.executeCommand('setContext', 'jumperless.running', false);
         vscode.commands.executeCommand('setContext', 'jumperless.runnableLanguages', ['python', 'jython']);
+    });
+
+    // Track whether the focused terminal is one of ours (REPL, Serial, App).
+    // The Ctrl+Q keybinding uses this to pass ^Q through to the device menus
+    // instead of triggering the editor shortcut.
+    step('track Jumperless terminal focus', () => {
+        const update = (t: vscode.Terminal | undefined) =>
+            vscode.commands.executeCommand(
+                'setContext', 'jumperless.terminalActive', !!t && t.name.startsWith('Jumperless'));
+        context.subscriptions.push(vscode.window.onDidChangeActiveTerminal(update));
+        update(vscode.window.activeTerminal);
     });
 
     if (getConfig<boolean>('connectOnStartup')) {

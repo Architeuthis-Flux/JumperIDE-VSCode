@@ -24,6 +24,26 @@ export interface SymbolInfo {
 
 let apiData: ApiRefData | null = null;
 
+/**
+ * Scrub scraping artifacts from API data. The docs scraper sometimes read a
+ * following section's function list as parameter bullets, leaving argHelp
+ * "parameters" like `wavegen_set_output(output)` under unrelated functions.
+ * A real parameter name never contains parentheses. Runs on both the bundled
+ * JSON and cached copies in globalState (which users may have stored before
+ * the bundled data was cleaned).
+ */
+function sanitizeApiData(data: ApiRefData): ApiRefData {
+    const argHelp: ApiRefData['argHelp'] = {};
+    for (const [fn, args] of Object.entries(data.argHelp ?? {})) {
+        const kept: Record<string, string> = {};
+        for (const [arg, desc] of Object.entries(args)) {
+            if (!arg.includes('(') && !arg.includes(')')) { kept[arg] = desc; }
+        }
+        if (Object.keys(kept).length) { argHelp[fn] = kept; }
+    }
+    return { ...data, argHelp };
+}
+
 const JUMPERLESS_CONSTANTS = [
     "TOP_RAIL", "T_RAIL", "BOTTOM_RAIL", "BOT_RAIL", "B_RAIL", "GND",
     "DAC0", "DAC_0", "DAC1", "DAC_1",
@@ -74,7 +94,7 @@ export function loadApiData(extensionPath: string, context?: vscode.ExtensionCon
     if (context) {
         const cached = context.globalState.get<ApiRefData>('jumperless.apiRef');
         if (cached && cached.symbols?.length > 100) {
-            apiData = cached;
+            apiData = sanitizeApiData(cached);
             return apiData;
         }
     }
@@ -82,7 +102,7 @@ export function loadApiData(extensionPath: string, context?: vscode.ExtensionCon
     const jsonPath = path.join(extensionPath, 'data', 'api-ref.json');
     try {
         const raw = fs.readFileSync(jsonPath, 'utf-8');
-        apiData = JSON.parse(raw) as ApiRefData;
+        apiData = sanitizeApiData(JSON.parse(raw) as ApiRefData);
     } catch {
         apiData = { headings: [], descriptions: {}, argHelp: {}, hiddenSymbols: [], symbols: [] };
     }
@@ -90,8 +110,8 @@ export function loadApiData(extensionPath: string, context?: vscode.ExtensionCon
 }
 
 export function updateApiData(data: ApiRefData, context: vscode.ExtensionContext): void {
-    apiData = data;
-    context.globalState.update('jumperless.apiRef', data);
+    apiData = sanitizeApiData(data);
+    context.globalState.update('jumperless.apiRef', apiData);
     context.globalState.update('jumperless.apiRef.fetchedAt', Date.now());
 }
 

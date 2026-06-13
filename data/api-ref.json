@@ -400,10 +400,6 @@
     "clickwheel_get_direction": {
       "consume": "If `True` (default), clears the direction after reading (one-shot detection). If `False`, the direction persists until consumed."
     },
-    "clickwheel_get_button": {
-      "wavegen_set_output(output)": "`DAC0`, `DAC1`, `TOP_RAIL`, `BOTTOM_RAIL` (default `DAC1`)",
-      "wavegen_set_freq(hz)": "0.0001–10000.0 Hz (default 100 Hz)"
-    },
     "get_net_name": {
       "netNum": "The net number (0 to number of nets - 1)."
     },
@@ -489,12 +485,7 @@
     "set_state": {
       "json": "A JSON string representing the state (same format as returned by",
       "clear_first": "If `True` (default), clears all existing",
-      "from_wokwi": "If `True`, interpret `json` as a Wokwi diagram.json and",
-      "print_bridges()": "Prints all active bridges.",
-      "print_paths()": "Prints all resolved paths between nodes.",
-      "print_crossbars()": "Prints the raw state of the crossbar matrix.",
-      "print_nets()": "Prints the current net list.",
-      "print_chip_status()": "Prints the status of the CH446Q chips."
+      "from_wokwi": "If `True`, interpret `json` as a Wokwi diagram.json and"
     },
     "jfs.listdir": {
       "path": "The path to the directory."

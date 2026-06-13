@@ -23,6 +23,11 @@ function norm(p: string): string {
     return process.platform === 'win32' ? p.toLowerCase() : p;
 }
 
+/** Device path a local working-copy file maps to, if it is one. */
+export function deviceTargetFor(fsPath: string): string | undefined {
+    return mirrorToDevice.get(norm(fsPath));
+}
+
 function cacheRoot(context: vscode.ExtensionContext): string {
     return path.join(context.globalStorageUri.fsPath, 'device');
 }

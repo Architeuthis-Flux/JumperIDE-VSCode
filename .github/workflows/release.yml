@@ -125,23 +125,28 @@ jobs:
             echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${TAG}/CHANGELOG.md) for details." >> release-notes.md
           fi
 
+          DL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${VSIX}"
+
           cat >> release-notes.md <<EOF
 
           ## Installation
 
-          Download \`${VSIX}\` from the assets below, then either:
-
-          **From the UI** — open the Extensions view, click the \`...\` menu in
-          its title bar, choose **Install from VSIX...**, and pick the
-          downloaded file.
-
-          **From the command line:**
+          **From the command line** — download and install in one step (run from
+          any directory):
 
           \`\`\`sh
-          code --install-extension ${VSIX}     # VS Code
+          curl -L -o ${VSIX} ${DL}
           cursor --install-extension ${VSIX}   # Cursor
+          code --install-extension ${VSIX}     # VS Code
           codium --install-extension ${VSIX}   # VSCodium
           \`\`\`
+
+          **From the UI** — download \`${VSIX}\` from the **Assets** below, then
+          open the Extensions view, click the \`...\` menu in its title bar,
+          choose **Install from VSIX...**, and pick the downloaded file.
+
+          > The \`--install-extension\` command only finds the file if you run it
+          > from the folder you downloaded it into (or pass the full path to it).
 
           Then reload the window, plug in your Jumperless V5, and run
           **Jumperless: Connect** from the command palette.

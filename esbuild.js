@@ -13,6 +13,9 @@ const opts = {
     external: ['vscode', 'serialport', '@serialport/*'],
     format: 'cjs',
     platform: 'node',
+    // Prefer ESM entry points so packages like jsonc-parser (whose CJS build
+    // is a UMD wrapper with dynamic requires) get bundled statically.
+    mainFields: ['module', 'main'],
     target: 'node18',
     sourcemap: true,
     minify: !watch,

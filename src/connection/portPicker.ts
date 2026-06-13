@@ -6,16 +6,28 @@
 import * as vscode from 'vscode';
 import { getConfig } from '../utils';
 
-async function listSerialPorts(): Promise<PortInfo[]> {
+export async function listSerialPorts(): Promise<PortInfo[]> {
     const { SerialPort } = await import('serialport');
-    return SerialPort.list();
+    const ports: PortInfo[] = await SerialPort.list();
+    // macOS: serialport lists the /dev/tty.* (callin) node, which fails with
+    // "Resource busy" whenever its /dev/cu.* twin is open and can hang waiting
+    // for carrier detect. Normalize to the callout node everywhere so the
+    // picker, terminal banners, and status bar all show the port we open.
+    if (process.platform === 'darwin') {
+        for (const p of ports) {
+            if (p.path.startsWith('/dev/tty.')) {
+                p.path = '/dev/cu.' + p.path.slice('/dev/tty.'.length);
+            }
+        }
+    }
+    return ports;
 }
 
 const JUMPERLESS_VID = '1D50';
 const JUMPERLESS_PID = 'ACAB';
 const JLV5_SERIAL_PREFIX = 'JLV5port';
 
-interface PortInfo {
+export interface PortInfo {
     path: string;
     manufacturer?: string;
     serialNumber?: string;
@@ -23,7 +35,7 @@ interface PortInfo {
     productId?: string;
 }
 
-function isJumperlessPort(p: PortInfo): boolean {
+export function isJumperlessPort(p: PortInfo): boolean {
     const vid = (p.vendorId || '').toUpperCase();
     const pid = (p.productId || '').toUpperCase();
     if (vid === JUMPERLESS_VID && pid === JUMPERLESS_PID) { return true; }
@@ -31,7 +43,7 @@ function isJumperlessPort(p: PortInfo): boolean {
     return false;
 }
 
-function portSuffix(p: PortInfo): number {
+export function portSuffix(p: PortInfo): number {
     const m = p.path.match(/port(\d+)/i) || p.serialNumber?.match(/port(\d+)/i);
     return m ? parseInt(m[1], 10) : 999;
 }

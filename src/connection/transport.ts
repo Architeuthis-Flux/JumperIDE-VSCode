@@ -26,6 +26,13 @@ export class Transport {
     private decoder = new StringDecoder('utf8');
 
     async open(path: string, baudRate: number): Promise<void> {
+        // macOS exposes each port as /dev/tty.* (callin: blocks on carrier
+        // detect, EBUSY whenever the cu.* twin is open) and /dev/cu.* (callout:
+        // the right node for us). serialport's list() only reports tty.*, so
+        // rewrite to cu.* here.
+        if (process.platform === 'darwin' && path.startsWith('/dev/tty.')) {
+            path = '/dev/cu.' + path.slice('/dev/tty.'.length);
+        }
         const { SerialPort } = await import('serialport');
         return new Promise((resolve, reject) => {
             const port = new SerialPort({ path, baudRate, autoOpen: false });
